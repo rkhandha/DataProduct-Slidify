@@ -1,0 +1,84 @@
+---
+title       : Medicare Cost Data Analysis
+subtitle    : 
+author      : Coursea Data Product Student
+job         : 
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+---
+
+### Overview
+The data provided here include National and State level summaries that receive Medicare Inpatient Prospective Payment System (IPPS) payments for the top 100 most frequently billed discharges, paid under Medicare based on a rate per discharge using the Medicare Severity Diagnosis Related Group (MS-DRG) for Fiscal Year (FY) 2012. These DRGs represent more than 7 million discharges or 60 percent of total Medicare IPPS discharges. More details can be found at https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Medicare-Provider-Charge-Data/Inpatient2012.html
+
+---
+
+### Data Manipulation Steps
+ 1.Load Library
+ 2. Read Data
+ 3. Create Variables
+ 4. Calculate Top 25 Average Paying States
+ 4. Create Interactive Charts
+
+---
+
+## Data Manipulation
+```{r, echo=FALSE,message=FALSE}
+#getwd()
+library(rCharts)
+library(maps)
+library(mapproj)
+library(RColorBrewer)
+library(googleVis)
+library(plyr)
+require(googleVis)
+
+meddata <- read.csv("Medicare_Charge_Inpatient_DRG100_DRG_Summary_by_DRGState_FY2012.csv", header= TRUE)
+rmeddata <- as.data.frame(meddata)
+#colnames(meddata)
+drgproc <- as.character(sort(unique(meddata$DRG.Definition)))
+state <- sort(unique(meddata$Provider.State))
+paymentrange <- range(meddata$Average.Total.Payments, na.rm=TRUE)
+reg <- 'US'
+state <- c('USA', state.abb)
+df <- meddata
+df1 <- meddata[meddata$DRG.Definition == drgproc[1], ]
+aggmeddata <- ddply(meddata, "Provider.State", summarise, Average.Total.Payments.bystate = mean(Average.Total.Payments), Total.Discharges.bystate = sum(Total.Discharges) , Average.Medicare.Payments.bystate = mean(Average.Medicare.Payments), Average.Covered.Charges.bystate = mean(Average.Covered.Charges))
+top75pay <- quantile(aggmeddata$Average.Total.Payments.bystate,na.rm = TRUE,c(.75))
+sub <- subset(aggmeddata, aggmeddata$Average.Total.Payments.bystate >= top75pay)
+
+
+```
+
+---
+
+### Plot
+```{r, echo=FALSE, results='asis',message=FALSE}
+        chart <-
+        gvisGeoChart(df,
+                   locationvar="Provider.State", colorvar="Average.Total.Payments",
+                   sizevar="Total.Discharges",
+                   options=list(region="US", displayMode="regions", 
+                                resolution="provinces",
+                                colorAxis="{colors:['#4daf4a','#fc8d62','red']}"
+                   ))
+      
+      #tab <- gvisTable(df1,options=list(width=1200))
+      Pie1 <- gvisPieChart(sub,  options=list(title='Top 25 Percent Average Total Payments State'))
+      #tabgeo <- gvisMerge(chart, tab)
+      allchart<- gvisMerge(chart, Pie1,
+                           tableOptions = "cellspacing=\"20\" bgcolor=\"#AABBCC\"",
+horizontal=TRUE)
+      #allchart <- gvisMerge(chartpie, tab,horizontal=FALSE)
+      #allchart$save ('allchart.html', cdn =TRUE)
+      #cat('iframe src = "allchart.html"')
+      print(allchart,"chart")
+```
+
+
+
+
+
